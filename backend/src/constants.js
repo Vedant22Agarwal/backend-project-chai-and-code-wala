@@ -1,0 +1,1 @@
+export const DB_NAME = "videotube"; // Db_name only 
