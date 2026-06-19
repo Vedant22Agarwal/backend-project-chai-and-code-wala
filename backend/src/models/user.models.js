@@ -56,14 +56,14 @@ userSchema.pre("save",async function(next){ // why not arrow function because th
 // now we have created a problem ,suppose user apdates it name so password will also update it self so to prevent this we use modified function
     if(!this.isModified("password")) return next();
 
-    this.password = bcrypt.hash(this.password,10);
+    this.password = await bcrypt.hash(this.password,10);
     next();
 });
 userSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password,this.password)
 }
 
-userSchema.method.generateAccessToken = function (){
+userSchema.methods.generateAccessToken = function (){
     return jwt.sign(
         {
             _id:this._id,
@@ -77,7 +77,7 @@ userSchema.method.generateAccessToken = function (){
         }
     )
 }
-userSchema.method.generateRefreshToken = function (){
+userSchema.methods.generateRefreshToken = function (){
     return jwt.sign(
         {
             _id:this._id,
