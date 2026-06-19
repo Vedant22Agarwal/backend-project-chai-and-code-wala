@@ -6,3 +6,5 @@ class ApiResponse {// DB se kuch data aa gaya ab bs bhejna h
         this.success = statusCode < 400;
     }
 }
+
+export {ApiResponse}
