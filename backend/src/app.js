@@ -22,6 +22,11 @@ app.use(express.urlencoded({
 app.use(express.static("public"));
 app.use(cookieParser()); // allow server to use the cookies of broswer
 
+// route import 
+import userRouter from "./routes/user.routes.js" // router default h naa toh kuch bhi naam de sakte h 
 
-
+// routes declaration 
+app.use("/api/v1/users",userRouter)
+// https://localhost:3000/api/v1/users/register
+// https://localhost:3000/users/login
 export {app}

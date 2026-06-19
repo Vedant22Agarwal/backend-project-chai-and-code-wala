@@ -1,8 +1,8 @@
-const asynHandler = (requestHandler) => (req, res, next) => {
+const asyncHandler = (requestHandler) => (req, res, next) => {
   Promise.resolve(requestHandler(req, res, next)).catch((error) => next(error));
 };
 
-export { asynHandler };
+export { asyncHandler };
 
 // Using try catch
 // const asyncHandler = (fn) => async (req, res, next) => {
