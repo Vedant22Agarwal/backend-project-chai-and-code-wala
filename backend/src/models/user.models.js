@@ -49,15 +49,14 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-userSchema.pre("save",async function(next){ // why not arrow function because this feature is not in arrow and generally these are time consuming so asyn fn is used
+userSchema.pre("save", async function(){ // why not arrow function because this feature is not in arrow and generally these are time consuming so asyn fn is used
 // next is used becuase pre is middleware so give it to next 
 
 // now we have created a problem ,suppose user apdates it name so password will also update it self so to prevent this we use modified function
-    if(!this.isModified("password")) return next();
+    if(!this.isModified("password")) return ;
 
-    this.password = await bcrypt.hash(this.password,10);
-    next();
+    this.password = await bcrypt.hash(this.password, 10)
+    // next(); // don't use next when async middleware is used
 });
 userSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password,this.password)
@@ -88,4 +87,4 @@ userSchema.methods.generateRefreshToken = function (){
         }
     )
 }
-export const User = new mongoose.model("User", userSchema);
+export const User = mongoose.model("User", userSchema);
