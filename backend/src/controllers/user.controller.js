@@ -4,6 +4,18 @@ import {User} from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/Cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+const generateAccessAndRefreshToken = async (userId) => {
+    try {
+        const userinfo = await User.findById(userId);
+        const accessToken = userinfo.generateAccessToken();
+        const refreshToken = userinfo.generateRefreshToken();
+        user.refreshToken = refreshToken;
+        await user.save({validateBeforeSave:false}); // then ensure that not go throw DB again just add the data that has been given 
+        return{accessToken,refreshToken}; 
+    } catch (error) {
+        throw new ApiError(500,"Something went wrong while generating refresh and access token")
+    }
+}
 const registerUser = asyncHandler(async (req,res) => {
     // get user detail from frontend 
     // validation - not empty
@@ -89,4 +101,84 @@ const registerUser = asyncHandler(async (req,res) => {
 //     }
 // };
 
-export {registerUser};
+const loginUser = asyncHandler(async (req,res) => {
+    // take username and pass as details 
+    // check validation 
+    // check user exists or not 
+    // if not ,throw error 
+    // passwod check bhi krna h 
+    // generate access token and referesh token 
+    // DB mein refresh token ko update krna user ka 
+    // send back the credials required 
+
+    const {email,username,password} = req.body;
+    if(!username || !email){
+        throw new ApiError(400,"Username or email is required");
+    }
+
+    const userinfo = await User.findOne({ // by this we are checking either from username or email 
+        $or:[{username,email}]
+    });
+
+    if(userinfo){
+        throw new ApiError(404,"User does not exists");
+    }
+    
+    const comparision = await userinfo.isPasswordCorrect(password);
+    if(!comparision){
+        throw new ApiError(401,"Password Incorrect");
+    }
+
+    const {accessToken,refreshToken} = await generateAccessAndRefreshToken(userinfo._id);
+
+    // it is made so that user can't modify the cookie only user can
+    const options = {
+        httpOnly : true,
+        secure:true
+    }
+
+    const loggedInUser = await User.findById(userinfo._id).select("-password -refreshToken");
+
+    res.status(200)   
+    .cookie("accessToken",accessToken,options) // cookies setup 
+    .cookie("refreshToken",refreshToken,options)
+    .json(
+        new ApiResponse(200,
+            {
+                user : loggedInUser,
+                accessToken, // these are used to 
+                refreshToken
+            },
+            "User Logged in Successfully"
+        )
+    )
+
+
+});
+
+const logoutUser = asyncHandler(async(req,res) => {
+    // remove cookies of the user 
+    // remove refreshToken from DB
+
+    await User.findByIdAndUpdate(req.user._id,
+        {
+            $set:{ // set kr doo yee yee cheeze 
+                refreshToken : undefined
+            }
+        },
+        {
+            new : true // jo updated value h user ki wo bhej do 
+        }
+    )  
+
+    const options = {
+        httpOnly : true,
+        secure:true
+    }
+
+    return req.status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
+    .json(new ApiResponse(200,{},"User Logged Out"));
+})
+export {registerUser,loginUser,logoutUser};

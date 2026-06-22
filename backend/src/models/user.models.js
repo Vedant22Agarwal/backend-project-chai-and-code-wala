@@ -58,6 +58,9 @@ userSchema.pre("save", async function(){ // why not arrow function because this 
     this.password = await bcrypt.hash(this.password, 10)
     // next(); // don't use next when async middleware is used
 });
+
+// Jo bhi methods bannaye h wo User ke pass nhi hone ye userinfo je pass honge jo DB se aaye h 
+
 userSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password,this.password)
 }
