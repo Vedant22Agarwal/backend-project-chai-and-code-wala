@@ -4,6 +4,7 @@ import {User} from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/Cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
+import {v2 as cloudinary} from "cloudinary"
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -62,7 +63,7 @@ const registerUser = asyncHandler(async (req,res) => {
     }
 
     if(!avatarLocalPath){
-        throw new ApiError(400,"Avatar is applied");
+        throw new ApiError(400,"Avatar is required");
     }
 
     // console.log(res.files);
@@ -70,7 +71,7 @@ const registerUser = asyncHandler(async (req,res) => {
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
     if(!avatar){
-        throw new ApiError(400,"Avatar is applied");
+        throw new ApiError(400,"Avatar is required");
     }
     
     const user = await User.create({
@@ -243,7 +244,7 @@ const changeCurrentPassword = asyncHandler(async(req,res) => {
         throw new ApiError(400,"Empty Feild");
     }
     const userinfo = await User.findById(req.user?._id);   // as we are now passing through protected route only 
-    const compare = userinfo.isPasswordCorrect(oldpassword);
+    const compare =await userinfo.isPasswordCorrect(oldpassword);
     if(!compare){
         throw new ApiError(400,"Incorrect old Password");
     }
@@ -295,11 +296,21 @@ const updateUserAvatar = asyncHandler(async(req,res) => {
     const avatar = await uploadOnCloudinary(avatarloclapath);
     if(!avatar.url){
         throw new ApiError(400,"Error while uploading on Avatar");
-    }
+    }   
+    // delete from cloudinary 
+    const userinfo = await User.findById(req.user?._id);
+    const url = userinfo.avatar;
+    const publicId = url
+    .split("/")
+    .pop()
+    .split(".")[0];
+    await cloudinary.uploader.destroy(publicId);
+
+
     const user = await User.findByIdAndUpdate(req.user?._id,
         {
             $set:{
-                avatar : avatar.url
+                avatar : avatar.secure_url
             }
         },{
             new : true
@@ -319,6 +330,15 @@ const updateUserCoverImage = asyncHandler(async(req,res) => {
     if(!coverImage.url){
         throw new ApiError(400,"Error while uploading on Cover Image");
     }
+    // delete from cloudinary 
+    const userinfo = await User.findById(req.user?._id);
+    const url = userinfo.avatar;
+    const publicId = url
+    .split("/")
+    .pop()
+    .split(".")[0];
+    
+    await cloudinary.uploader.destroy(publicId);
     const user = await User.findByIdAndUpdate(req.user?._id,
         {
             $set:{
