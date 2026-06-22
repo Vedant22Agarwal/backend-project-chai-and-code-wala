@@ -18,6 +18,7 @@ const generateAccessAndRefreshToken = async (userId) => {
         throw new ApiError(500,"Something went wrong while generating refresh and access token")
     }
 }
+// User Register
 const registerUser = asyncHandler(async (req,res) => {
     // get user detail from frontend 
     // validation - not empty
@@ -103,6 +104,8 @@ const registerUser = asyncHandler(async (req,res) => {
 //     }
 // };
 
+
+// Logged in user
 const loginUser = asyncHandler(async (req,res) => {
     // take username and pass as details 
     // check validation 
@@ -158,6 +161,8 @@ const loginUser = asyncHandler(async (req,res) => {
 
 });
 
+
+// Logout User 
 const logoutUser = asyncHandler(async(req,res) => {
     // remove cookies of the user 
     // remove refreshToken from DB
@@ -185,6 +190,7 @@ const logoutUser = asyncHandler(async(req,res) => {
     .json(new ApiResponse(200,{},"User Logged Out"));
 });
 
+// RefreshToken
 const refreshAccessToken = asyncHandler(async (req,res) => {
     const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
     if(!incomingRefreshToken){
@@ -227,5 +233,104 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
         throw new ApiError(401,error?.message || "Invalid Refresh Token");
     }
 
-})
-export {registerUser,loginUser,logoutUser , refreshAccessToken};
+});
+
+const changeCurrentPassword = asyncHandler(async(req,res) => {
+    const {oldpassword,newpassword} = req.body;
+    if(
+        [oldpassword,newpassword].some((field) => !field || field.trim() === "")
+    ){
+        throw new ApiError(400,"Empty Feild");
+    }
+    const userinfo = await User.findById(req.user?._id);   // as we are now passing through protected route only 
+    const compare = userinfo.isPasswordCorrect(oldpassword);
+    if(!compare){
+        throw new ApiError(400,"Incorrect old Password");
+    }
+    userinfo.password = newpassword // ab apne app bcrypt wala function chal jaayega 
+    await userinfo.save({
+        validateBeforeSave:false
+    });
+    return res.status(200)
+    .json(new ApiResponse(200,{},"Password Changed Successfully"));
+
+
+
+});
+
+const getCurrentUser = asyncHandler(async(req,res) => {
+    res.status(200)
+    .json(new ApiResponse(200,req.user,"Current User Fetched Succesfully"));
+});
+
+const updateAccountDetails = asyncHandler(async(req, res) => {
+    const {fullName, email} = req.body
+
+    if (!fullName || !email) {
+        throw new ApiError(400, "All fields are required")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName,
+                email
+            }
+        },
+        {new: true}
+        
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details updated successfully"))
+});
+
+const updateUserAvatar = asyncHandler(async(req,res) => {
+    const avatarloclapath = req.file?.path;
+    if(!avatarloclapath){
+        throw new ApiError(400,"Avatar File is Missing");
+    }
+    const avatar = await uploadOnCloudinary(avatarloclapath);
+    if(!avatar.url){
+        throw new ApiError(400,"Error while uploading on Avatar");
+    }
+    const user = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set:{
+                avatar : avatar.url
+            }
+        },{
+            new : true
+        }
+    ).select("-password ");
+    return res.status(200).
+    json(new ApiResponse(200,user,"Avatar updated successfully"));
+});
+
+
+const updateUserCoverImage = asyncHandler(async(req,res) => {
+    const coverImageLocalPath = req.file?.path;
+    if(!coverImageLocalPath){
+        throw new ApiError(400,"Cover Image is Missing");
+    }
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if(!coverImage.url){
+        throw new ApiError(400,"Error while uploading on Cover Image");
+    }
+    const user = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set:{
+                coverImage : coverImage.url
+            }
+        },{
+            new : true
+        }
+    ).select("-password ");
+    return res.status(200).
+    json(new ApiResponse(200,user,"Cover Image updated successfully"));
+});
+export {registerUser,loginUser,logoutUser , refreshAccessToken,changeCurrentPassword,getCurrentUser,updateAccountDetails
+    ,updateUserAvatar,updateUserCoverImage
+};
