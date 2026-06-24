@@ -5,6 +5,7 @@ import { uploadOnCloudinary } from "../utils/Cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import {v2 as cloudinary} from "cloudinary"
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -351,6 +352,128 @@ const updateUserCoverImage = asyncHandler(async(req,res) => {
     return res.status(200).
     json(new ApiResponse(200,user,"Cover Image updated successfully"));
 });
-export {registerUser,loginUser,logoutUser , refreshAccessToken,changeCurrentPassword,getCurrentUser,updateAccountDetails
-    ,updateUserAvatar,updateUserCoverImage
+
+const getUserChannelProfile = asyncHandler(async(req,res) => { // yaha do user h ek toh khud tum and ek dusra jiska channel serach kia h 
+    const {username} = req.params 
+    if(!username?.trim()){
+        throw new ApiError(400,"Username is missing");
+    }
+    const channel = await User.aggregate([
+        {
+            $match : {
+                username : username?.toLowerCase(),
+
+            }
+        },// first pipeline
+        {
+            $lookup : { // left join jese sql 
+                from : "subscriptions",
+                localField : "_id",// current jis model mein h 
+                foreignField : "channel",//from wale mein jaake 
+                as : "subscriber"
+            }
+        }, // second stage
+        {
+            $lookup:{
+                from : "subscriptions",
+                localField : "_id",
+                foreignField : "subscriber",
+                as : "subscribedTo"
+            }
+        },
+        {
+            $addFields:{ // ye apne second user model mein fields add ho gai 
+                subscriberCount : {
+                    $size : "$subscriber"
+                },
+                channelsSubscribedToCount :{
+                    $size : "$subscribedTo"  
+                },
+                isSubcribed : {
+                    $condition : {
+                        if : {
+                            $in : [req.user?._id , "$subscriber.subscriber"]
+                        },
+                        then : true,
+                        else : false
+
+                    }
+                }
+            }
+        },{
+            $project:{ // what i have give to the frontedn to show 
+                fullName : 1,
+                username : 1,
+                subscriberCount:1,
+                channelsSubscribedToCount:1,
+                isSubcribed:1,
+                avatar : 1,
+                coverImage : 1,
+                email:1,
+
+
+
+            }
+        }
+    ]);
+    console.log(channel);
+
+    if(!channel?.length){
+        throw new ApiError(404,"Channel Does Not Exists");
+    }
+    return res.status(200)
+    .json(new ApiResponse(200,channel[0],"User channel Fetched Successfully !!"))
+    
+});
+
+const getWatchHistory = asyncHandler(async (req,res) => {
+    const user = await User.aggregate([ // here mongoose can't act so directly string should not be given 
+        {
+            $match : {
+                _id : new mongoose.Types.ObjectId(req.user?._id)
+            }
+        },
+        {
+            $lookup:{
+                from : "videos",
+                localField : "watchHistory",
+                foreignField : "_id",
+                as : "watchHistory",
+                pipeline : [
+                    {
+                        $lookup : {
+                            from : "users",
+                            localField : "owner",
+                            foreignField:"_id",
+                            as : "owner",
+                            pipeline : [
+                                {
+                                    $project:{
+                                        fullName:1,
+                                        username:1,
+                                        avatar:1,
+
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    { // it is generally done to make easy for frontend developer other it will be an array which have location stored at index 0 
+                        $addFields:{
+                            owner:{
+                                $first:"$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ]);
+    return res.status(200).json(new ApiResponse(200,user[0].watchHistory,"Watch History Fetched Successfully"))
+});
+export {registerUser,loginUser,logoutUser , 
+    refreshAccessToken,changeCurrentPassword,getCurrentUser,
+    updateAccountDetails
+    ,updateUserAvatar,updateUserCoverImage,
+    getUserChannelProfile,getWatchHistory
 };
