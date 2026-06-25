@@ -172,8 +172,8 @@ const logoutUser = asyncHandler(async(req,res) => {
     
     await User.findByIdAndUpdate(req.user._id,
         {
-            $set:{ // set kr doo yee yee cheeze 
-                refreshToken : undefined
+            $unset:{ // unset kr doo yee yee cheeze 
+                refreshToken : 1
             }
         },
         {
@@ -266,8 +266,9 @@ const getCurrentUser = asyncHandler(async(req,res) => {
 });
 
 const updateAccountDetails = asyncHandler(async(req, res) => {
+   
     const {fullName, email} = req.body
-
+    
     if (!fullName || !email) {
         throw new ApiError(400, "All fields are required")
     }
@@ -390,7 +391,7 @@ const getUserChannelProfile = asyncHandler(async(req,res) => { // yaha do user h
                     $size : "$subscribedTo"  
                 },
                 isSubcribed : {
-                    $condition : {
+                    $cond : {
                         if : {
                             $in : [req.user?._id , "$subscriber.subscriber"]
                         },
