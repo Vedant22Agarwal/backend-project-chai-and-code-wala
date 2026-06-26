@@ -24,9 +24,15 @@ app.use(cookieParser()); // allow server to use the cookies of broswer
 
 // route import 
 import userRouter from "./routes/user.routes.js" // router default h naa toh kuch bhi naam de sakte h 
-
+import healthcheckRoutes from "./routes/healthcheck.routes.js";
+import tweetRouter from "./routes/tweets.routes.js"
 // routes declaration 
+app.use("/api/v1/healthcheck",healthcheckRoutes)
 app.use("/api/v1/users",userRouter)
+app.use("/api/v1/tweets", tweetRouter)
+
+
+
 // https://localhost:3000/api/v1/users/register
 // https://localhost:3000/users/login
 export {app}
